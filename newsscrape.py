@@ -1,6 +1,7 @@
 import re
 import time
 import logging
+import pickle
 
 import pandas as pd
 
@@ -28,217 +29,291 @@ INITIAL_SITE_URL = str("https://info.51.ca/search?q=" + '"' + SEARCH_TERM + '"')
 logging.basicConfig(
     format="%(asctime)s, %(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
     datefmt="%Y-%m-%d:%H:%M:%S",
-    level=logging.INFO,
+    level=logging.DEBUG,
 )
 
 
-def harvester(keyword, url):
-    def multi_checker():  # This function checks for multi-image returns in search results
+
+#Get the URLs for a search result
+def url_fetch(keyword, url):
+    def multi_checker(): #This function checks for multi-image returns in search results
         try:
-            class_check = driver.find_element(By.CSS_SELECTOR, ".img-wrap")
+            class_check = driver.find_element(By.CSS_SELECTOR,'.img-wrap')
         except NoSuchElementException:
             return False
         return True
 
-    df_list = []
-
-    driver.get(url)  # Search URL; gets the pagination and the headlines
+    url_list = []
     time.sleep(1)
-    result_pages = driver.find_element(By.ID, "pagination")
-    max_page = int(
-        re.search(r".*?(?=\s*›)", result_pages.text).group(0)
-    )  # The last page of search results
+    driver.get(url)
+    result_pages = driver.find_element(By.ID, 'pagination')
+    max_page = int(re.search(r".*?(?=\s*›)", result_pages.text).group(0))  # The last page of search results
 
-    for outer_ring in range(
-        1, 2
-    ):  # (max_page + 1)): #Loop to harvest all of the results (based on max page)
-        driver.get(url + "&page=" + str(outer_ring))
-        time.sleep(1)
+    for outer_ring in range(1, 5):#max_page + 1): #Loop to harvest all of the results (based on max page)
+        driver.get(url + '&page=' + str(outer_ring))
+        time.sleep(0.25)
+
         # First objective is to get the urls from the ten search results per-page, with the following variation:
-        if (
-            multi_checker() == False
-        ):  # Multi-picture results not present in search results
-            next_url_list = list(
-                filter(
-                    None,
-                    [
-                        x.get_attribute("href")
-                        for x in driver.find_elements(
-                            By.XPATH, './/ul[@class="news-list"]/li/*'
-                        )
-                    ],
-                )
-            )
-            time.sleep(1)
+        if multi_checker() == False:  # Multi-picture results not present in search results
+            next_url_list = list(filter(None, [x.get_attribute('href') for x in
+                                               driver.find_elements(By.XPATH, './/ul[@class="news-list"]/li/*')]))
+
         if multi_checker() == True:  # Multi-picture results present in search results
-            next_url_list = list(
-                filter(
-                    None,
-                    [
-                        x.get_attribute("href")
-                        for x in driver.find_elements(
-                            By.XPATH, './/ul[@class="news-list"]/li/*'
-                        )
-                    ],
-                )
-            )
-            additionals = list(
-                filter(
-                    None,
-                    [
-                        x.get_attribute("href")
-                        for x in driver.find_elements(
-                            By.XPATH, './/ul[@class="news-list"]/li/h3/*'
-                        )
-                    ],
-                )
-            )
+            next_url_list = list(filter(None, [x.get_attribute('href') for x in
+                                               driver.find_elements(By.XPATH, './/ul[@class="news-list"]/li/*')]))
+            additionals = list(filter(None, [x.get_attribute('href') for x in
+                                             driver.find_elements(By.XPATH, './/ul[@class="news-list"]/li/h3/*')]))
             next_url_list = next_url_list + additionals
-            time.sleep(1)
 
-        for (
-            inner_ring
-        ) in (
-            next_url_list
-        ):  # Loop to harvest the (up to) ten search results in a given page
-            driver.get(inner_ring)
-            time.sleep(3)
-            try:
-                article_headline = driver.find_element(
-                    By.TAG_NAME, "h1"
-                )  # Article headline
-                article_headline = article_headline.text
-            except:
-                article_headline = "None"
-            try:
-                article_meta = driver.find_element(
-                    By.CLASS_NAME, "article-meta"
-                )  # Meta data (author, date, comments)
-            except:
-                article_meta = "None"
-            try:
-                article_author = re.search(
-                    r"(?<=作者：\s).*(?=\s*)", article_meta.text
-                ).group(
-                    0
-                )  # Article author
-            except:
-                article_author = "None"
-            try:
-                article_date = re.search(r"(?<=发布：\s).*", article_meta.text).group(
-                    0
-                )  # Article date
-            except:
-                article_date = "None"
-            try:
-                article_comments = re.search(r".*(?=\s评论)", article_meta.text).group(
-                    0
-                )  # Number of comments left on an article
-            except:
-                article_comments = "None"
-            try:
-                article_body = driver.find_element(
-                    By.ID, "arcbody"
-                )  # Article body text (without pictures)
-                article_body = article_body.text
-            except:
-                article_body = "None"
-            try:
-                comment_link = driver.find_element(
-                    By.CSS_SELECTOR,
-                    ".view-all-section > div:nth-child(1) > a:nth-child(1)",
-                )  # Link to comments on another website (useful in other scripts)
-                comment_link = comment_link.get_attribute("href")
-            except:
-                comment_link = "None"
+        for x in next_url_list:
+            url_list.append(x)
 
-            # Comments --> Aims to simplify formatting and include first few comments of every article
-            try:
-                comment_list = driver.find_element(
-                    By.CLASS_NAME, "comment-list-section"
-                ).text.split("\n")
-                comment_output = ""
-                for t, i in enumerate(comment_list):
-                    if t == 0:
-                        last_one = i
-                        continue
-                    if i == "":
-                        continue
-                    if i[0] == "@":
-                        commenter_name = last_one
-                    if last_one[0] == "@":
-                        commenter_likes = i
-                    if i == "回复":
-                        commenter_content = last_one
-                        comment_output = (
-                            comment_output
-                            + "\n"
-                            + commenter_name
-                            + "("
-                            + commenter_likes
-                            + "):"
-                            + commenter_content
-                        )
-                    last_one = i
-            except:
-                comment_output = "None"
+    return url_list
 
-            # Add to list of entries
-            new_entry = [
-                article_headline,
-                article_body,
-                article_author,
-                inner_ring,
-                article_date,
-                comment_link,
-                article_comments,
-                comment_output,
-            ]
-            logging.info(
-                f"new_entry: {new_entry}"
-            )  # level denotes floor for displaying the message
-            df_list.append(new_entry)
+def url_scraper(input):
+    driver.get(input)
+    try:
+        article_headline = driver.find_element(By.TAG_NAME, 'h1') #Article headline
+        article_headline = article_headline.text
+    except: article_headline = 'None'
+    try:
+        article_meta = driver.find_element(By.CLASS_NAME, 'article-meta') #Meta data (author, date, comments)
+    except: article_meta = 'None'
+    try:
+        article_author = re.search(r"(?<=作者：\s).*(?=\s*)", article_meta.text).group(0) #Article author
+    except: article_author = 'None'
+    try:
+        article_date = re.search(r"(?<=发布：\s).*", article_meta.text).group(0) #Article date
+    except: article_date = 'None'
+    try:
+        article_comments = re.search(r".*(?=\s评论)", article_meta.text).group(0) #Number of comments left on an article
+    except: article_comments = 'None'
+    try:
+        article_body = driver.find_element(By.ID, 'arcbody') #Article body text (without pictures)
+        article_body = article_body.text
+    except: article_body = 'None'
+    try:
+        comment_link = driver.find_element(By.CSS_SELECTOR, '.view-all-section > div:nth-child(1) > a:nth-child(1)') #Link to comments on another website (useful in other scripts)
+        comment_link = comment_link.get_attribute('href')
+    except:
+        comment_link = 'None'
 
-    # Create harvest dataframe
-    scraped_data = pd.DataFrame(
-        data=df_list,
-        columns=[
-            "headline",
-            "body",
-            "author",
-            "url",
-            "date",
-            "commentlink",
-            "totalcomments",
-            "comments",
-        ],
-    )
+    new_entry = [article_headline, article_body, article_author, article_date, comment_link]
+    logging.info(f"new_entry: {new_entry}") #level denotes floor for displaying the message
+    return new_entry
 
-    # Format dataframe
-    scraped_data["totalcomments"].replace(
-        "None", 0, inplace=True
-    )  # Convert data types for easier sorting
-    scraped_data = scraped_data.astype({"totalcomments": "int"})
 
-    # Convert Chinese dates to datetime
-    scraped_data["date"] = (
-        scraped_data["date"]
-        .str.replace("年", "-")
-        .str.replace("月", "-")
-        .str.replace("日", "X")
-    )
 
-    def datecut(input):  # Formatting for datetime conversion
-        try:
-            return re.findall(r".*?(?=X)", input)[0]
-        except:
-            return "None"
 
-    scraped_data["date"] = scraped_data["date"].apply(datecut)
-    # Get rid of 'None' entries (these are brief posts of daily headlines without comments; eg> https://info.51.ca/articles/1226208?wyacs=
-    scraped_data = scraped_data[scraped_data["date"] != "None"]
-    scraped_data["date"] = pd.to_datetime(scraped_data["date"])
-    return scraped_data
+#
+#
+# def harvester(keyword, url):
+#     def multi_checker():  # This function checks for multi-image returns in search results
+#         try:
+#             class_check = driver.find_element(By.CSS_SELECTOR, ".img-wrap")
+#         except NoSuchElementException:
+#             return False
+#         return True
+#
+#     df_list = []
+#
+#     driver.get(url)  # Search URL; gets the pagination and the headlines
+#     time.sleep(1)
+#     result_pages = driver.find_element(By.ID, "pagination")
+#     max_page = int(
+#         re.search(r".*?(?=\s*›)", result_pages.text).group(0)
+#     )  # The last page of search results
+#
+#     for outer_ring in range(
+#         1, 2
+#     ):  # (max_page + 1)): #Loop to harvest all of the results (based on max page)
+#         driver.get(url + "&page=" + str(outer_ring))
+#         time.sleep(1)
+#         # First objective is to get the urls from the ten search results per-page, with the following variation:
+#         if (
+#             multi_checker() == False
+#         ):  # Multi-picture results not present in search results
+#             next_url_list = list(
+#                 filter(
+#                     None,
+#                     [
+#                         x.get_attribute("href")
+#                         for x in driver.find_elements(
+#                             By.XPATH, './/ul[@class="news-list"]/li/*'
+#                         )
+#                     ],
+#                 )
+#             )
+#             time.sleep(1)
+#         if multi_checker() == True:  # Multi-picture results present in search results
+#             next_url_list = list(
+#                 filter(
+#                     None,
+#                     [
+#                         x.get_attribute("href")
+#                         for x in driver.find_elements(
+#                             By.XPATH, './/ul[@class="news-list"]/li/*'
+#                         )
+#                     ],
+#                 )
+#             )
+#             additionals = list(
+#                 filter(
+#                     None,
+#                     [
+#                         x.get_attribute("href")
+#                         for x in driver.find_elements(
+#                             By.XPATH, './/ul[@class="news-list"]/li/h3/*'
+#                         )
+#                     ],
+#                 )
+#             )
+#             next_url_list = next_url_list + additionals
+#             time.sleep(1)
+#
+#         for (
+#             inner_ring
+#         ) in (
+#             next_url_list
+#         ):  # Loop to harvest the (up to) ten search results in a given page
+#             driver.get(inner_ring)
+#             time.sleep(3)
+#             try:
+#                 article_headline = driver.find_element(
+#                     By.TAG_NAME, "h1"
+#                 )  # Article headline
+#                 article_headline = article_headline.text
+#             except:
+#                 article_headline = "None"
+#             try:
+#                 article_meta = driver.find_element(
+#                     By.CLASS_NAME, "article-meta"
+#                 )  # Meta data (author, date, comments)
+#             except:
+#                 article_meta = "None"
+#             try:
+#                 article_author = re.search(
+#                     r"(?<=作者：\s).*(?=\s*)", article_meta.text
+#                 ).group(
+#                     0
+#                 )  # Article author
+#             except:
+#                 article_author = "None"
+#             try:
+#                 article_date = re.search(r"(?<=发布：\s).*", article_meta.text).group(
+#                     0
+#                 )  # Article date
+#             except:
+#                 article_date = "None"
+#             try:
+#                 article_comments = re.search(r".*(?=\s评论)", article_meta.text).group(
+#                     0
+#                 )  # Number of comments left on an article
+#             except:
+#                 article_comments = "None"
+#             try:
+#                 article_body = driver.find_element(
+#                     By.ID, "arcbody"
+#                 )  # Article body text (without pictures)
+#                 article_body = article_body.text
+#             except:
+#                 article_body = "None"
+#             try:
+#                 comment_link = driver.find_element(
+#                     By.CSS_SELECTOR,
+#                     ".view-all-section > div:nth-child(1) > a:nth-child(1)",
+#                 )  # Link to comments on another website (useful in other scripts)
+#                 comment_link = comment_link.get_attribute("href")
+#             except:
+#                 comment_link = "None"
+#
+#             # Comments --> Aims to simplify formatting and include first few comments of every article
+#             try:
+#                 comment_list = driver.find_element(
+#                     By.CLASS_NAME, "comment-list-section"
+#                 ).text.split("\n")
+#                 comment_output = ""
+#                 for t, i in enumerate(comment_list):
+#                     if t == 0:
+#                         last_one = i
+#                         continue
+#                     if i == "":
+#                         continue
+#                     if i[0] == "@":
+#                         commenter_name = last_one
+#                     if last_one[0] == "@":
+#                         commenter_likes = i
+#                     if i == "回复":
+#                         commenter_content = last_one
+#                         comment_output = (
+#                             comment_output
+#                             + "\n"
+#                             + commenter_name
+#                             + "("
+#                             + commenter_likes
+#                             + "):"
+#                             + commenter_content
+#                         )
+#                     last_one = i
+#             except:
+#                 comment_output = "None"
+#
+#             # Add to list of entries
+#             new_entry = [
+#                 article_headline,
+#                 article_body,
+#                 article_author,
+#                 inner_ring,
+#                 article_date,
+#                 comment_link,
+#                 article_comments,
+#                 comment_output,
+#             ]
+#             logging.info(
+#                 f"new_entry: {new_entry}"
+#             )  # level denotes floor for displaying the message
+#             df_list.append(new_entry)
+#
+#     # Create harvest dataframe
+#     scraped_data = pd.DataFrame(
+#         data=df_list,
+#         columns=[
+#             "headline",
+#             "body",
+#             "author",
+#             "url",
+#             "date",
+#             "commentlink",
+#             "totalcomments",
+#             "comments",
+#         ],
+#     )
+#
+#     # Format dataframe
+#     scraped_data["totalcomments"].replace(
+#         "None", 0, inplace=True
+#     )  # Convert data types for easier sorting
+#     scraped_data = scraped_data.astype({"totalcomments": "int"})
+#
+#     # Convert Chinese dates to datetime
+#     scraped_data["date"] = (
+#         scraped_data["date"]
+#         .str.replace("年", "-")
+#         .str.replace("月", "-")
+#         .str.replace("日", "X")
+#     )
+#
+#     def datecut(input):  # Formatting for datetime conversion
+#         try:
+#             return re.findall(r".*?(?=X)", input)[0]
+#         except:
+#             return "None"
+#
+#     scraped_data["date"] = scraped_data["date"].apply(datecut)
+#     # Get rid of 'None' entries (these are brief posts of daily headlines without comments; eg> https://info.51.ca/articles/1226208?wyacs=
+#     scraped_data = scraped_data[scraped_data["date"] != "None"]
+#     scraped_data["date"] = pd.to_datetime(scraped_data["date"])
+#     return scraped_data
 
 
 if __name__ == "__main__":
@@ -250,7 +325,18 @@ if __name__ == "__main__":
     options.add_argument("--headless")
     driver = webdriver.Chrome(service=service, options=options)
 
-    df = harvester(SEARCH_TERM, INITIAL_SITE_URL)
+    #df = harvester(SEARCH_TERM, INITIAL_SITE_URL)
 
     # Save to pickle
-    df.to_pickle(DATAFRAME_FILE)
+    #df.to_pickle(DATAFRAME_FILE)
+
+final_list = url_fetch(SEARCH_TERM, INITIAL_SITE_URL)
+
+for entry in final_list:
+    url_scraper(entry)
+
+
+#with open ('url_list.pickle', 'wb') as f:
+#    pickle.dump(final_list, f)
+
+
