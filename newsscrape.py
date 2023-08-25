@@ -22,9 +22,10 @@ from selenium.webdriver.support.events import AbstractEventListener
 """
 
 DATAFRAME_FILE = "51ca-NDP.pickle"
-SEARCH_TERM = "NDP"  # Term to search
+SEARCH_TERM = "Pumpkin"  # Term to search
 
 INITIAL_SITE_URL = str("https://info.51.ca/search?q=" + '"' + SEARCH_TERM + '"')
+MAX_PATH_DEPTH = None
 
 logging.basicConfig(
     format="%(asctime)s, %(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
@@ -46,13 +47,12 @@ def url_fetch(keyword, url):
     time.sleep(1)
     driver.get(url)
     result_pages = driver.find_element(By.ID, "pagination")
-    max_page = int(
-        re.search(r".*?(?=\s*›)", result_pages.text).group(0)
-    )  # The last page of search results
+    max_page = MAX_PATH_DEPTH or int(
+        re.search(r".*?(?=\s*›)", result_pages.text).group(0)) + 1
+      # The last page of search results
 
     for outer_ring in range(
-        1, 5
-    ):  # max_page + 1): #Loop to harvest all of the results (based on max page)
+        1, max_page): #Loop to harvest all of the results (based on max page)
         driver.get(url + "&page=" + str(outer_ring))
         time.sleep(0.25)
 
@@ -120,13 +120,14 @@ def url_scraper(input):
         article_author = re.search(r"(?<=作者：\s).*(?=\s*)", article_meta.text).group(
             0
         )  # Article author
-    except NoSuchElementException:
+    except (NoSuchElementException, AttributeError) as error:
         article_author = "None"
     try:
         article_date = re.search(r"(?<=发布：\s).*", article_meta.text).group(
             0
         )  # Article date
-    except NoSuchElementException:
+    except (NoSuchElementException, AttributeError) as error:
+        print('ERROR:', error, input)
         article_date = "None"
     try:
         article_body = driver.find_element(
@@ -149,6 +150,7 @@ def url_scraper(input):
         article_author,
         article_date,
         comment_link,
+        input
     ]
     logging.info(
         f"new_entry: {new_entry}"
@@ -202,6 +204,7 @@ if __name__ == "__main__":
             "article_author",
             "article_date",
             "comment_link",
+            "article_link"
         ]
     )
 
@@ -212,5 +215,8 @@ if __name__ == "__main__":
             ignore_index=True,
         )
 
+
     # Format the DF
     df = formatter(df)
+
+    print(df[['article_headline', 'article_link']])
