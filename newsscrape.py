@@ -33,12 +33,11 @@ logging.basicConfig(
 )
 
 
-
-#Get the URLs for a search result
+# Get the URLs for a search result
 def url_fetch(keyword, url):
-    def multi_checker(): #This function checks for multi-image returns in search results
+    def multi_checker():  # This function checks for multi-image returns in search results
         try:
-            class_check = driver.find_element(By.CSS_SELECTOR,'.img-wrap')
+            class_check = driver.find_element(By.CSS_SELECTOR, ".img-wrap")
         except NoSuchElementException:
             return False
         return True
@@ -46,23 +45,56 @@ def url_fetch(keyword, url):
     url_list = []
     time.sleep(1)
     driver.get(url)
-    result_pages = driver.find_element(By.ID, 'pagination')
-    max_page = int(re.search(r".*?(?=\s*›)", result_pages.text).group(0))  # The last page of search results
+    result_pages = driver.find_element(By.ID, "pagination")
+    max_page = int(
+        re.search(r".*?(?=\s*›)", result_pages.text).group(0)
+    )  # The last page of search results
 
-    for outer_ring in range(1, 5):#max_page + 1): #Loop to harvest all of the results (based on max page)
-        driver.get(url + '&page=' + str(outer_ring))
+    for outer_ring in range(
+        1, 5
+    ):  # max_page + 1): #Loop to harvest all of the results (based on max page)
+        driver.get(url + "&page=" + str(outer_ring))
         time.sleep(0.25)
 
         # First objective is to get the urls from the ten search results per-page, with the following variation:
-        if multi_checker() == False:  # Multi-picture results not present in search results
-            next_url_list = list(filter(None, [x.get_attribute('href') for x in
-                                               driver.find_elements(By.XPATH, './/ul[@class="news-list"]/li/*')]))
+        if (
+            multi_checker() == False
+        ):  # Multi-picture results not present in search results
+            next_url_list = list(
+                filter(
+                    None,
+                    [
+                        x.get_attribute("href")
+                        for x in driver.find_elements(
+                            By.XPATH, './/ul[@class="news-list"]/li/*'
+                        )
+                    ],
+                )
+            )
 
         if multi_checker() == True:  # Multi-picture results present in search results
-            next_url_list = list(filter(None, [x.get_attribute('href') for x in
-                                               driver.find_elements(By.XPATH, './/ul[@class="news-list"]/li/*')]))
-            additionals = list(filter(None, [x.get_attribute('href') for x in
-                                             driver.find_elements(By.XPATH, './/ul[@class="news-list"]/li/h3/*')]))
+            next_url_list = list(
+                filter(
+                    None,
+                    [
+                        x.get_attribute("href")
+                        for x in driver.find_elements(
+                            By.XPATH, './/ul[@class="news-list"]/li/*'
+                        )
+                    ],
+                )
+            )
+            additionals = list(
+                filter(
+                    None,
+                    [
+                        x.get_attribute("href")
+                        for x in driver.find_elements(
+                            By.XPATH, './/ul[@class="news-list"]/li/h3/*'
+                        )
+                    ],
+                )
+            )
             next_url_list = next_url_list + additionals
 
         for x in next_url_list:
@@ -70,36 +102,61 @@ def url_fetch(keyword, url):
 
     return url_list
 
+
 def url_scraper(input):
     driver.get(input)
     try:
-        article_headline = driver.find_element(By.TAG_NAME, 'h1') #Article headline
+        article_headline = driver.find_element(By.TAG_NAME, "h1")  # Article headline
         article_headline = article_headline.text
-    except NoSuchElementException: article_headline = 'None'
-    try:
-        article_meta = driver.find_element(By.CLASS_NAME, 'article-meta') #Meta data (author, date, comments)
-    except NoSuchElementException: article_meta = 'None'
-    try:
-        article_author = re.search(r"(?<=作者：\s).*(?=\s*)", article_meta.text).group(0) #Article author
-    except NoSuchElementException: article_author = 'None'
-    try:
-        article_date = re.search(r"(?<=发布：\s).*", article_meta.text).group(0) #Article date
-    except NoSuchElementException: article_date = 'None'
-    try:
-        article_body = driver.find_element(By.ID, 'arcbody') #Article body text (without pictures)
-        article_body = article_body.text
-    except NoSuchElementException: article_body = 'None'
-    try:
-        comment_link = driver.find_element(By.CSS_SELECTOR, '.view-all-section > div:nth-child(1) > a:nth-child(1)') #Link to comments on another website (useful in other scripts)
-        comment_link = comment_link.get_attribute('href')
     except NoSuchElementException:
-        comment_link = 'None'
+        article_headline = "None"
+    try:
+        article_meta = driver.find_element(
+            By.CLASS_NAME, "article-meta"
+        )  # Meta data (author, date, comments)
+    except NoSuchElementException:
+        article_meta = "None"
+    try:
+        article_author = re.search(r"(?<=作者：\s).*(?=\s*)", article_meta.text).group(
+            0
+        )  # Article author
+    except NoSuchElementException:
+        article_author = "None"
+    try:
+        article_date = re.search(r"(?<=发布：\s).*", article_meta.text).group(
+            0
+        )  # Article date
+    except NoSuchElementException:
+        article_date = "None"
+    try:
+        article_body = driver.find_element(
+            By.ID, "arcbody"
+        )  # Article body text (without pictures)
+        article_body = article_body.text
+    except NoSuchElementException:
+        article_body = "None"
+    try:
+        comment_link = driver.find_element(
+            By.CSS_SELECTOR, ".view-all-section > div:nth-child(1) > a:nth-child(1)"
+        )  # Link to comments on another website (useful in other scripts)
+        comment_link = comment_link.get_attribute("href")
+    except NoSuchElementException:
+        comment_link = "None"
 
-    new_entry = [article_headline, article_body, article_author, article_date, comment_link]
-    logging.info(f"new_entry: {new_entry}") #level denotes floor for displaying the message
+    new_entry = [
+        article_headline,
+        article_body,
+        article_author,
+        article_date,
+        comment_link,
+    ]
+    logging.info(
+        f"new_entry: {new_entry}"
+    )  # level denotes floor for displaying the message
     return new_entry
 
-#Formats dataframe (standardize dates, convert to datetime)
+
+# Formats dataframe (standardize dates, convert to datetime)
 def formatter(input):
     # Convert Chinese dates to datetime
     input["article_date"] = (
@@ -132,20 +189,28 @@ if __name__ == "__main__":
     driver = webdriver.Chrome(service=service, options=options)
 
     # Save to pickle
-    #df.to_pickle(DATAFRAME_FILE)
+    # df.to_pickle(DATAFRAME_FILE)
 
-
-    #Get the URL list for the search term
+    # Get the URL list for the search term
     final_list = url_fetch(SEARCH_TERM, INITIAL_SITE_URL)
 
-    #Create empty DF
-    df = pd.DataFrame(columns=['article_headline', 'article_body', 'article_author', 'article_date', 'comment_link'])
+    # Create empty DF
+    df = pd.DataFrame(
+        columns=[
+            "article_headline",
+            "article_body",
+            "article_author",
+            "article_date",
+            "comment_link",
+        ]
+    )
 
-    #Fill DF with scrape function
+    # Fill DF with scrape function
     for entry in final_list:
-        df = pd.concat([df, pd.DataFrame([url_scraper(entry)], columns=df.columns)], ignore_index=True)
+        df = pd.concat(
+            [df, pd.DataFrame([url_scraper(entry)], columns=df.columns)],
+            ignore_index=True,
+        )
 
-    #Format the DF 
+    # Format the DF
     df = formatter(df)
-
-
