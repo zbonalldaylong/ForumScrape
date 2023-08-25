@@ -75,27 +75,24 @@ def url_scraper(input):
     try:
         article_headline = driver.find_element(By.TAG_NAME, 'h1') #Article headline
         article_headline = article_headline.text
-    except: article_headline = 'None'
+    except NoSuchElementException: article_headline = 'None'
     try:
         article_meta = driver.find_element(By.CLASS_NAME, 'article-meta') #Meta data (author, date, comments)
-    except: article_meta = 'None'
+    except NoSuchElementException: article_meta = 'None'
     try:
         article_author = re.search(r"(?<=作者：\s).*(?=\s*)", article_meta.text).group(0) #Article author
-    except: article_author = 'None'
+    except NoSuchElementException: article_author = 'None'
     try:
         article_date = re.search(r"(?<=发布：\s).*", article_meta.text).group(0) #Article date
-    except: article_date = 'None'
-    try:
-        article_comments = re.search(r".*(?=\s评论)", article_meta.text).group(0) #Number of comments left on an article
-    except: article_comments = 'None'
+    except NoSuchElementException: article_date = 'None'
     try:
         article_body = driver.find_element(By.ID, 'arcbody') #Article body text (without pictures)
         article_body = article_body.text
-    except: article_body = 'None'
+    except NoSuchElementException: article_body = 'None'
     try:
         comment_link = driver.find_element(By.CSS_SELECTOR, '.view-all-section > div:nth-child(1) > a:nth-child(1)') #Link to comments on another website (useful in other scripts)
         comment_link = comment_link.get_attribute('href')
-    except:
+    except NoSuchElementException:
         comment_link = 'None'
 
     new_entry = [article_headline, article_body, article_author, article_date, comment_link]
@@ -150,9 +147,5 @@ if __name__ == "__main__":
 
     #Format the DF 
     df = formatter(df)
-
-
-#with open ('url_list.pickle', 'wb') as f:
-#    pickle.dump(final_list, f)
 
 
