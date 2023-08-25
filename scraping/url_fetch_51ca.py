@@ -13,18 +13,18 @@ BASE_SEARCH_URL = "https://info.51.ca/search?q="
 class URLFetch51ca:
     def __init__(self, driver):
         self.driver = driver
-        self.search_term = ''
+        self.search_term = ""
 
     def _multi_image_checker(self):
-            is_multi_image = False
-            try:
-                driver.find_element(By.CSS_SELECTOR, ".img-wrap")
-                is_multi_image = True 
-            except NoSuchElementException:
-                pass
-            
-            return is_multi_image
-    
+        is_multi_image = False
+        try:
+            driver.find_element(By.CSS_SELECTOR, ".img-wrap")
+            is_multi_image = True
+        except NoSuchElementException:
+            pass
+
+        return is_multi_image
+
     # XXX Should probably use URLlib
     def _get_url(self, page_num=None):
         url = f"{BASE_SEARCH_URL}/{self.search_term}"
@@ -32,52 +32,33 @@ class URLFetch51ca:
             url = f"{url}&page={page_num}"
         return url
 
-
     def _fetch_urls_from_page(self, page_num):
         urls = []
-        #XXX SHould use URLlib
+        # XXX SHould use URLlib
         driver.get(self._get_url(page_num=page_num))
+
+        def filter_elements(xpath):
+            return list(
+                filter(
+                    None,
+                    [
+                        x.get_attribute("href")
+                        for x in driver.find_elements(
+                        By.XPATH, xpath
+                    )
+                    ],
+                ))
 
         # First objective is to get the urls from the ten search results per-page, with the following variation:
         if (
-                self._multi_image_checker() == False
+            self._multi_image_checker() == False
         ):  # Multi-picture results not present in search results
-            urls = list(
-                filter(
-                    None,
-                    [
-                        x.get_attribute("href")
-                        for x in driver.find_elements(
-                        By.XPATH, './/ul[@class="news-list"]/li/*'
-                    )
-                    ],
-                )
-            )
+            urls = filter_elements('.//ul[@class="news-list"]/li/*')
 
         else:
             # Multi-picture results present in search results
-            urls = list(
-                filter(
-                    None,
-                    [
-                        x.get_attribute("href")
-                        for x in driver.find_elements(
-                        By.XPATH, './/ul[@class="news-list"]/li/*'
-                    )
-                    ],
-                )
-            )
-            urls += list(
-                filter(
-                    None,
-                    [
-                        x.get_attribute("href")
-                        for x in driver.find_elements(
-                        By.XPATH, './/ul[@class="news-list"]/li/h3/*'
-                    )
-                    ],
-                )
-            )
+            urls = filter_elements('.//ul[@class="news-list"]/li/*')
+            urls += filter_elements('.//ul[@class="news-list"]/li/h3/*')
 
         return urls
 
@@ -89,18 +70,21 @@ class URLFetch51ca:
         self.driver.get(self._get_url())
         logging.info(f"started web driver:{driver.current_url}")
         result_pages = driver.find_element(By.ID, "pagination")
-        max_page = max_page_depth or int(
-            re.search(r".*?(?=\s*›)", result_pages.text).group(0)) + 1
-          # The last page of search results
+        max_page = (
+            max_page_depth
+            or int(re.search(r".*?(?=\s*›)", result_pages.text).group(0)) + 1
+        )
+        # The last page of search results
 
         for i in range(
-            1, max_page): #Loop to harvest all of the results (based on max page)
+            1, max_page
+        ):  # Loop to harvest all of the results (based on max page)
             for url in self._fetch_urls_from_page(i):
                 yield url
             time.sleep(0.25)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     service = Service()
     options = webdriver.ChromeOptions()
@@ -111,4 +95,3 @@ if __name__ == '__main__':
 
     for url in u.url_fetch("Pumpkin", max_page_depth=5):
         print(url)
-
