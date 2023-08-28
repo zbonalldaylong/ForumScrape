@@ -18,7 +18,7 @@ class URLFetch51ca:
     def _multi_image_checker(self):
         is_multi_image = False
         try:
-            driver.find_element(By.CSS_SELECTOR, ".img-wrap")
+            self.driver.find_element(By.CSS_SELECTOR, ".img-wrap")
             is_multi_image = True
         except NoSuchElementException:
             pass
@@ -35,7 +35,7 @@ class URLFetch51ca:
     def _fetch_urls_from_page(self, page_num):
         urls = []
         # XXX SHould use URLlib
-        driver.get(self._get_url(page_num=page_num))
+        self.driver.get(self._get_url(page_num=page_num))
 
         def filter_elements(xpath):
             return list(
@@ -43,7 +43,7 @@ class URLFetch51ca:
                     None,
                     [
                         x.get_attribute("href")
-                        for x in driver.find_elements(
+                        for x in self.driver.find_elements(
                         By.XPATH, xpath
                     )
                     ],
@@ -68,8 +68,7 @@ class URLFetch51ca:
 
         time.sleep(1)
         self.driver.get(self._get_url())
-        logging.info(f"started web driver:{driver.current_url}")
-        result_pages = driver.find_element(By.ID, "pagination")
+        result_pages = self.driver.find_element(By.ID, "pagination")
         max_page = (
             max_page_depth
             or int(re.search(r".*?(?=\s*›)", result_pages.text).group(0)) + 1
@@ -93,5 +92,5 @@ if __name__ == "__main__":
 
     u = URLFetch51ca(driver)
 
-    for url in u.url_fetch("Pumpkin", max_page_depth=5):
+    for url in u.url_fetch("Pumpkin", max_page_depth=None):
         print(url)
