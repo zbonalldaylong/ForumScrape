@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 
 
-SEARCH_TERM = "Pumpkin"
+SEARCH_TERM = "种族歧视"
 MAX_PAGES = None
 PICKLE_SAVE = True #whether to save or not
 
@@ -119,12 +119,16 @@ if __name__ == "__main__":
             ignore_index=True,
         )
 
+
     # Format the DF
     df = df_formatter(df)
-    
-    IF PICKLE_SAVE = True:
-        
+   
+
+    print(df.shape)
+
+    # Save the DF
+    if PICKLE_SAVE == True:
         # Save to pickle
-        with open(f"{SEARCH_TERM.lower()}-51ca.pickle", "wb") as f:
-        pickle.dump(df, f)
+        with open(f"{SEARCH_TERM.lower()}-articles-51ca.pickle", "wb") as f:
+            pickle.dump(df, f)
     else: pass 

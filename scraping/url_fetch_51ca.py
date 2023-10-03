@@ -20,7 +20,7 @@ class URLFetch51ca:
         try:
             self.driver.find_element(By.CSS_SELECTOR, ".img-wrap")
             is_multi_image = True
-        except NoSuchElementException:
+        except:
             pass
 
         return is_multi_image
