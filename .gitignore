@@ -5,14 +5,7 @@ __pycache_
 old
 logs
 .pyc
-.c_scrape51ca.py.swp
-.commentscrape51.py.swn
-.commentscrape51.py.swo
-scraping/*.swo
-scraping/*.swp
-scraping/*.swn
-scraping/*.py.swo
-scraping/*.py.swp
-scraping/*.py.swn
-
+*.swp
+*.swo
+*.swn
 
