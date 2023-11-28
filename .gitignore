@@ -1,4 +1,14 @@
 *.pickle
 env
 *.log
-__pycache__
+__pycache_
+old
+logs
+.pyc
+.c_scrape51ca.py.swp
+.commentscrape51.py.swn
+.commentscrape51.py.swo
+scraping/*.swo
+scraping/*.swp
+scraping/*.swn
+
