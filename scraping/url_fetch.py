@@ -1,6 +1,5 @@
 import re
 import time
-import logging
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -90,7 +89,10 @@ if __name__ == "__main__":
     options.add_argument("--headless")
     driver = webdriver.Chrome(service=service, options=options)
 
+    #term to search
+    SEARCH_TERM = '邹至蕙'
+
     u = URLFetch51ca(driver)
 
-    for url in u.url_fetch("Pumpkin", max_page_depth=None):
+    for url in u.url_fetch(SEARCH_TERM, max_page_depth=None):
         print(url)
