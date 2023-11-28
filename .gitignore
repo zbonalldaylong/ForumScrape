@@ -11,4 +11,8 @@ logs
 scraping/*.swo
 scraping/*.swp
 scraping/*.swn
+scraping/*.py.swo
+scraping/*.py.swp
+scraping/*.py.swn
+
 
